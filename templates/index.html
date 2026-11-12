@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EN ⇄ DE Translator · Grammar Deep Dive</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config = { darkMode: 'class' }</script>
+  <style>
+    /* Wide screens: the search panel lives in the empty left margin. Below that it sits in the page flow. */
+    @media (min-width: 1750px) {
+      #gsPanel { position: fixed; top: 2.5rem; left: calc(50% - 36rem - 17.5rem); width: 16.5rem; margin: 0; }
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 antialiased">
+  <div class="max-w-6xl mx-auto px-4 py-10">
+
+    <header class="text-center mb-10">
+      <h1 class="text-3xl md:text-4xl font-bold tracking-tight">
+        <span class="text-indigo-400">English</span> ⇄ <span class="text-amber-400">Deutsch</span>
+      </h1>
+      <p class="text-slate-400 mt-2">Translate instantly, then understand the grammar behind it.</p>
+    </header>
+
+    <!-- Mode toggle -->
+    <div class="flex justify-center mb-6">
+      <div id="modeToggle" class="inline-flex rounded-xl bg-slate-900 border border-slate-800 p-1 text-sm">
+        <button data-mode="auto"  class="mode-btn px-4 py-2 rounded-lg">Auto-detect</button>
+        <button data-mode="en-de" class="mode-btn px-4 py-2 rounded-lg">EN → DE</button>
+        <button data-mode="de-en" class="mode-btn px-4 py-2 rounded-lg">DE → EN</button>
+      </div>
+    </div>
+
+    <!-- Split panel -->
+    <div class="grid md:grid-cols-2 gap-4">
+      <section class="rounded-2xl bg-slate-900 border border-slate-800 p-4 flex flex-col">
+        <div class="flex justify-between items-center mb-2">
+          <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Input</h2>
+          <span id="counter" class="text-xs text-slate-500">0 / {{ max_chars }}</span>
+        </div>
+        <textarea id="input" maxlength="{{ max_chars }}" rows="7"
+          class="w-full flex-1 bg-transparent resize-none outline-none text-lg placeholder-slate-600"
+          placeholder="Type or paste text… (Ctrl/Cmd + Enter to translate)"></textarea>
+        <div class="flex gap-2 mt-3">
+          <button id="translateBtn"
+            class="flex-1 bg-indigo-500 hover:bg-indigo-400 disabled:opacity-50 transition rounded-xl py-3 font-semibold">
+            Translate
+          </button>
+          <button id="swapBtn" title="Use translation as new input"
+            class="px-4 rounded-xl bg-slate-800 hover:bg-slate-700 transition">⇄</button>
+        </div>
+      </section>
+
+      <section class="rounded-2xl bg-slate-900 border border-slate-800 p-4 flex flex-col">
+        <div class="flex justify-between items-center mb-2">
+          <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Translation</h2>
+          <span id="dirLabel" class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 hidden"></span>
+        </div>
+        <div id="output" class="flex-1 text-lg min-h-[10rem] text-amber-200"></div>
+        <button id="copyBtn" class="self-end mt-3 text-xs text-slate-400 hover:text-white hidden">Copy</button>
+      </section>
+    </div>
+
+    <p id="error" class="hidden mt-4 text-center text-rose-400 text-sm"></p>
+
+    <!-- Word links between the sentence and its translation -->
+    <section id="alignSection" class="hidden mt-8 rounded-2xl bg-slate-900 border border-slate-800 p-6" aria-label="Word links">
+      <div class="flex items-center gap-3 mb-4">
+        <h2 class="text-xl font-semibold">🔗 Word links</h2>
+        <div id="alignSpinner" class="hidden w-5 h-5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+      <div id="alignBody"></div>
+    </section>
+
+    <!-- Grammar search -->
+    <aside id="gsPanel" class="mt-8 min-[1750px]:mt-0 rounded-2xl bg-slate-900 border border-slate-800 p-4" aria-label="Grammar search">
+      <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">🔎 Grammar search</h2>
+      <div class="relative">
+        <input id="gsInput" type="text" autocomplete="off" spellcheck="false"
+          role="combobox" aria-expanded="false" aria-controls="gsList" aria-autocomplete="list"
+          placeholder="Search a term, e.g. dativ…"
+          class="w-full rounded-xl bg-slate-950 border border-slate-800 focus:border-indigo-400 outline-none pl-3 pr-8 py-2 text-sm placeholder-slate-600" />
+        <button id="gsClear" type="button" aria-label="Clear search"
+          class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-sm">✕</button>
+        <ul id="gsList" role="listbox" class="hidden absolute z-20 left-0 right-0 mt-1 rounded-xl bg-slate-900 border border-slate-700 shadow-xl overflow-hidden"></ul>
+      </div>
+      <p id="gsHint" class="mt-4 mb-2 text-xs text-slate-500">Try one of these</p>
+      <div id="gsChips" class="flex flex-wrap gap-2"></div>
+      <div id="gsDetail" class="hidden mt-4 rounded-xl bg-slate-950 border border-slate-800 p-3"></div>
+    </aside>
+
+    <!-- AI Deep Dive -->
+    <section id="deepDive" class="hidden mt-8 rounded-2xl bg-slate-900 border border-slate-800 p-6">
+      <div class="flex items-center gap-3 mb-4">
+        <h2 class="text-xl font-semibold">🔍 AI Deep Dive</h2>
+        <div id="spinner" class="hidden w-5 h-5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+      <div id="skeleton" class="hidden space-y-3 animate-pulse">
+        <div class="h-4 bg-slate-800 rounded w-3/4"></div>
+        <div class="h-4 bg-slate-800 rounded w-1/2"></div>
+        <div class="h-24 bg-slate-800 rounded"></div>
+      </div>
+      <div id="breakdown"></div>
+    </section>
+
+    <footer class="text-center text-xs text-slate-600 mt-10">
+      Translation via Google Translate · Grammar analysis via Gemini. AI explanations can contain mistakes.
+    </footer>
+  </div>
+
+  <script src="{{ url_for('static', filename='glossary.js') }}"></script>
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+  <script src="{{ url_for('static', filename='align.js') }}"></script>
+  <script src="{{ url_for('static', filename='searchpanel.js') }}"></script>
+</body>
+</html>
